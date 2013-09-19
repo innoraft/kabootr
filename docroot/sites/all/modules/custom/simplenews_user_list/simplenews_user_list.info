@@ -1,0 +1,4 @@
+name = Simplenews User List
+description = "Changes in simplenews letter"
+package = Kabootar
+core = 7.x

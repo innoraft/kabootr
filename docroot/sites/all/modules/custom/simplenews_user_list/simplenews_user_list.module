@@ -1,0 +1,9 @@
+<?php
+
+/**
+ * Subscribe intially all users to Master newsletter category
+ */
+function simplenews_user_list_form_alter(&$form, &$form_state, $form_id) {
+	
+}
+
