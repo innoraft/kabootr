@@ -35,6 +35,7 @@ dependencies[] = pathauto
 dependencies[] = php
 dependencies[] = rules
 dependencies[] = simplenews
+dependencies[] = simplenews_user_list
 dependencies[] = strongarm
 dependencies[] = taxonomy
 dependencies[] = token
