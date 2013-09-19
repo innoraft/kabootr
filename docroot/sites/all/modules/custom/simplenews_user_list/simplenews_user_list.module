@@ -4,6 +4,23 @@
  * Subscribe intially all users to Master newsletter category
  */
 function simplenews_user_list_form_alter(&$form, &$form_state, $form_id) {
-	
+	// Add users filters to simplenews_admin_category_form
+	if ($form_id == 'simplenews_admin_category_form') {
+		include 'includes/simplenews_user_list.admin.inc';
+		$form['user_filter'] = array(
+				'#type' => 'fieldset',
+				'#title' => t('Create Subscription List'),
+				'#collapsible' => FALSE,
+		);
+		$newsletter_tid = NULL;
+		if (isset($form['tid']['#value'])) {
+			$newsletter_tid = $form['tid']['#value'];
+		}
+		$users_filters = simplenews_user_list_create_user_filters($newsletter_tid);
+		foreach ($users_filters as $f_key => $f_value) {
+			$form['user_filter']['kabootr_user_filter_' . $f_key] = $f_value;
+		}
+		$form['#submit'][] = 'simplenews_user_list_admin_category_form_submit';
+	}
 }
 
