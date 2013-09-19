@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * Implements hook_update().
+ * Subcribe the all the users intially to Master newsletter category.
+ */
+function simplenews_user_list_update_7001() {
+	global $language;
+	foreach ( simplenews_category_list () as $tid => $name ) {
+		$master_newsletter_tid = $tid;
+	}
+	$get_all_users_query = db_select ( 'users', 'u' )->fields ( 'u', array ('mail' ) )
+	->condition ( 'uid', '0', '<>' )
+	->execute ()->fetchAll ();
+	foreach ( $get_all_users_query as $value ) {
+		$email = $value->mail;
+		simplenews_subscribe_user ( $email, $master_newsletter_tid, FALSE, 'Default Subscribe', $language );
+	}
+}
