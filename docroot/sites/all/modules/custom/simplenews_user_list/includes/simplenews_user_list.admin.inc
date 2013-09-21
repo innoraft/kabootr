@@ -5,8 +5,10 @@
  *
  * @ingroup simplenews
  */
+
 /**
- * Create user filters given in the account setting form 
+ * Create user filters given in the account setting form
+ * @param newsletter_tid  
  */
 function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
 	$widget_type = array();
@@ -17,30 +19,26 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
 	$widget_default = array();
 	$widgets = array();
 	
-	// Give user field label, type and it's ids
-	$user_field_query = db_select('field_config_instance','fci')
-	->fields('fci',array('field_id','data'))
-	->condition('entity_type','user')
-	->execute()->fetchAll();
-	foreach ($user_field_query as $value) {
+	// Provide user field label, type and it's ids
+	// The id's of user field is important id, This id only identifies User filter
+	// We have used as key in creating user filter form widget
+	$user_field_query = db_select('field_config_instance','fci');
+	$user_field_query->leftJoin('field_config','fc','fci.field_id = fc.id');
+	$user_field_query->fields('fci',array('field_id','data'));
+	$user_field_query->fields('fc',array('data'));
+	$user_field_query->condition('entity_type','user');
+	$user_field_result = $user_field_query->execute()->fetchAll();
+	foreach ($user_field_result as $value) {
 		$user_field_ids[] = $value->field_id;
-		$value_arr = unserialize($value->data);
-		$widget_type[$value->field_id] = $value_arr['widget']['type'];
-		$widget_label[$value->field_id] = $value_arr['label'];
-	}
-	
-	// Give user fields allowed values sources
-	$get_user_field_detail_query = db_select('field_config','fc')
-	->fields('fc',array('id','data'))
-	->condition('id',$user_field_ids)
-	->execute()->fetchAll();
-	foreach ($get_user_field_detail_query as $value) {
-		$value_arr = unserialize($value->data);
-		if (isset($value_arr['settings']['allowed_values'])) {
-			$widget_allowed_values[$value->id] = $value_arr['settings']['allowed_values'];
+		$fci_value_arr = unserialize($value->data);
+		$widget_type[$value->field_id] = $fci_value_arr['widget']['type'];
+		$widget_label[$value->field_id] = $fci_value_arr['label'];
+		$fc_value_arr = unserialize($value->fc_data);
+		if (isset($fc_value_arr['settings']['allowed_values'])) {
+			$widget_allowed_values[$value->field_id] = $fc_value_arr['settings']['allowed_values'];
 		}
 	}
-
+	
 	// Set user fields allowed values to widget according to field ids
 	foreach ($widget_allowed_values as $w_key => $w_value) {
 		foreach ($w_value as $key => $value) {
@@ -63,29 +61,30 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
 		}
 	}
 		
-		// Retrieve already stored filters in simplenews_user_list
+	// Retrieve already stored filters in simplenews_user_list
 	if ($newsletter_tid != NULL) {
 		$users_filters_query = db_select ( 'simplenews_user_list', 'sul' )
 		->fields ( 'sul', array ('user_filters' ) )
 		->condition ( 'tid', $newsletter_tid )
 		->execute ()->fetchCol ( 0 );
-		if (count($users_filters_query)!= 0) {
-			foreach ($users_filters_query as $value)
-				$users_filters = unserialize($value);
-		foreach ( $users_filters as $w_key => $w_value ) {
-			if (is_array ( $w_value )) {
-				$widget_default [$w_key] = $w_value;
-			} else {
-				if (strpos ( $w_value, 'tid_' ) !== false) {
-					$widget_default [$w_key] = 'tid_' . explode ( '_', $w_value )[1];
-				} else {
+		if (count ( $users_filters_query ) != 0) {
+			foreach ( $users_filters_query as $value )
+				$users_filters = unserialize ( $value );
+			foreach ( $users_filters as $w_key => $w_value ) {
+				if (is_array ( $w_value )) {
 					$widget_default [$w_key] = $w_value;
+				} else {
+					if (strpos ( $w_value, 'tid_' ) !== false) {
+						$widget_default [$w_key] = 'tid_' . explode ( '_', $w_value )[1];
+					} else {
+						$widget_default [$w_key] = $w_value;
+					}
 				}
 			}
 		}
-		}
 	}
-// Create form elemtents according to user fields
+	
+	// Create form elemtents according to user fields
 	foreach ( $widget_type as $key => $value ) {
 		switch ($value) {
 			
@@ -138,8 +137,10 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
  * subcription list for created newsletter category
  */
 function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
-	$users = '';
-
+	$subcribe_uids = '';
+	$user_filter_flag = 0;		// Set flag to 0, User filters is not selected
+	$newsletter_tid = $form_state['values']['tid'];
+	$number_of_subscription = 0;
 	// Retreive user filter from form state array
 	$users_filters = array();
 	foreach ( $form_state ['values'] as $w_key => $w_value ) {
@@ -159,10 +160,11 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
 	}
 	
 	// Save or delete the status user filters and their value into simple_user_list table
-	simplenews_user_list_create_list($users_filters, $form_state['values']['tid']);
+	simplenews_user_list_create_list($users_filters, $newsletter_tid);
 	
 	// If user filter is selected then get the user details according to filters
 	if (count($users_filters) != 0) {
+		$user_filter_flag = 1;		// Set flag to 1, User filters is selected
 		// Get user field name and theid field ids
 		$user_field_ids = array_keys($users_filters);
 		$get_user_field_detail_query = db_select('field_config','fc')
@@ -170,15 +172,24 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
 		->condition('id',$user_field_ids)
 		->execute()->fetchAll();
 		
-		// Get user details form applied filters
+		// Prepare sql query from selected users filters
 		$get_users_ids_query = new EntityFieldQuery();
 		$get_users_ids_query->entityCondition('entity_type', 'user');
 		foreach ($get_user_field_detail_query as $value) {
+			$value_filter = '';
 			// Prepare entity field query according to applied user filters
 			if (is_array($users_filters[$value->id])) {
+				foreach ($users_filters[$value->id] as $key => $val) {
+					if (strpos($key,'tid_')!== false) {
+						$value_type = 'tid';
+						$value_filter[] = explode('_',$key)[1];
+					}
+					else {
+						$value_type = 'value';
+						$value_filter = $users_filters[$value->id];
+					}
+				}
 				$operator = "IN";
-				$value_type = 'value';
-				$value_filter = $users_filters[$value->id];
 			}
 			else {
 				if (strpos($users_filters[$value->id],'tid_')!== false) {
@@ -195,43 +206,85 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
 			$get_users_ids_query->fieldCondition($value->field_name, $value_type, $value_filter, $operator);
 		}
 		$result = $get_users_ids_query->execute();
-		$subscriber_uids = '';
-		if (isset($result['user'])) {
-			$uids = array_keys($result['user']);
-			foreach ($uids as $uid) {
-				if (simplenews_subscriber_load_by_uid($uid)) {
-					$subscriber_uids[] = $uid;
+
+		// if no user is found, then show the message and terminate the function, no change 
+		// in subscription list
+		if (count($result) == 0) {
+			$user_filter_flag = 1;		// Set flag to 1, User filtere are selected, but no valid user is found
+			$message = t("No users found for selected filters, There is no change in subscription list of @newsletter Category.", array('@newsletter' => taxonomy_term_load($newsletter_tid)->name));
+			drupal_set_message($message,'warning');
+			return '';
+		}
+		else {
+			$old_uids = array();
+			$new_uids = array();
+			
+			// If users are found, then create the category of uid, which have to be
+			// Subscribed and Unsubcribed
+			if (isset($result['user'])) {
+				$new_uids = array_keys($result['user']);
+				$number_of_subscription = count($new_uids);
+				// If already newsletter subscription persent for given newsletter category, retrieve them
+				$subscriptions_list = simplenews_get_subscriptions_by_list($newsletter_tid);
+				if (! count ( $subscriptions_list ) == 0) {
+					foreach ( simplenews_get_subscriptions_by_list ( $newsletter_tid ) as $value ) {
+						$old_uids [] = $value->uid;
+						$old_mails [$value->uid] = $value->mail;
+					}
+					
+					// Filter the subscribe and unsubscribe uids
+					$subcribe_uids = array_diff ( $new_uids, $old_uids );
+					$unsubscribe_uids = array_diff ( $old_uids, $new_uids );
+					
+					// Unsubsribe the users, 
+					if (count($unsubscribe_uids)!= 0) {
+						$number_of_unsubscription = 0;
+						foreach ( $unsubscribe_uids as $uid ) {
+							simplenews_unsubscribe_user ( $old_mails [$uid], $newsletter_tid, FALSE );
+							$number_of_unsubscription ++;
+						}
+						$message = t("!number_of_unsubscription users have unsubscribed to @newsletter Category.", array(
+								'@newsletter' => taxonomy_term_load($newsletter_tid)->name,
+								'!number_of_unsubscription' => $number_of_unsubscription));
+						drupal_set_message($message,'warning');
+					}
 				}
+				
+				// If no newsletter subscription for given newsletter category
 				else {
-					$new_uids[] = $uid;
-				}
+					$subcribe_uids =  $new_uids;
+				}				
 			}
-			if (isset($new_uids)) {
-				$users = entity_load('user', $new_uids);
-			}
-			
-			// Inactivate the old subscribers, and activate new subscribers come from new user filers
-			simplenews_user_list_update_subcription_list($form_state['values']['tid'], $subscriber_uids);
 		}
-	}
-	// If no filter is selected then subsribe the all user to that newsletter by default.
-	else {
-		$users = entity_load('user', FALSE);
-	}
-	// Subsribe users to newsletter
-	if (!($users == '' || count($users) == 0) )
-	{
 		
-		global $language;
-		unset($users[0]);
-		foreach ( $users as $value ) {
-			$email = $value->mail;
-			simplenews_subscribe_user ( $email, $form_state ['values'] ['tid'], FALSE, 'User List Subscription', $language );
-			
-			// If no user filter is selected, then activate all the already subscribers
-			simplenews_user_list_update_subcription_list($form_state['values']['tid']);
-		}
 	}
+	
+	// Subsribe users to newsletter
+	if (($subcribe_uids == '')) {
+		
+		// If no filter is selected then subsribe the all user to that newsletter by default.
+		$subscriber = simplenews_user_list_get_subscriber ();
+		foreach ( $subscriber as $value ) {
+			simplenews_subscribe_user ( $value->mail, $form_state ['values'] ['tid'], FALSE, 'Action', '' );
+			$number_of_subscription ++;
+		}
+		$message = t("No users filter selected, !number_of_subscription users have subscribed to @newsletter Category.", array(
+				'@newsletter' => taxonomy_term_load($newsletter_tid)->name,
+				'!number_of_subscription' => $number_of_subscription));
+		drupal_set_message($message,'warning');
+	} 
+	
+	// If filter is selected then subsribe the filtered user to that newsletter.
+	else {
+		$subscriber = simplenews_user_list_get_subscriber ();
+		foreach ( $subcribe_uids as $uid ) {
+			simplenews_subscribe_user ( $subscriber [$uid]->mail, $form_state ['values'] ['tid'], FALSE, 'Action', '' );
+		}
+		$message = t("!number_of_subscription users have subscribed to @newsletter Category.", array(
+				'@newsletter' => taxonomy_term_load($newsletter_tid)->name,
+				'!number_of_subscription' => $number_of_subscription));
+		drupal_set_message($message,'status');
+	}		
 }	
 
 /**
@@ -278,46 +331,9 @@ function simplenews_user_list_create_list($users_filters,$newsletter_tid) {
 	}
 }	
 
-/**
- * Update newsletter subcription list
- * 
-*/
-function simplenews_user_list_update_subcription_list($newsletter_tid = NULL,$subscriber_uids = '') {
-	
-	// Get all newsletter subscribers of given newsletter category 
-	$get_snid_query = db_select('simplenews_subscription','sn');
-	$get_snid_query->innerJoin('simplenews_subscriber','ss', 'sn.snid = ss.snid ');
-	$get_snid_query->fields('ss',array('snid','uid'))
-	->condition('sn.tid',$newsletter_tid);
-	$result = $get_snid_query->execute()->fetchAll();
-	
-	// Inactivate the old subscribers, and activate new subscribers come from new user filers
-	if (is_array($subscriber_uids)) {
-		$inactivate_snids = '';
-		$activate_snids = '';
-		foreach ($result as $value) {
-			if (!in_array($value->uid, $subscriber_uids)) {
-				$inactivate_snids[] = $value->snid;
-			}
-			else {
-				$activate_snids[] = $value->snid;
-			}
-		}
-		if (is_array($inactivate_snids)) {
-			simplenews_subscription_activate($inactivate_snids, 0)	;
-		}
-		if (is_array($activate_snids)) {
-			simplenews_subscription_activate($activate_snids, 1)	;
-		}
-	}
-	
-	// If no user filter is selected, then activate all the already subscribers
-	else {
-		foreach ($result as $value) {
-				$activate_snids[] = $value->snid;
-		}
-		if (is_array($activate_snids)) {
-			simplenews_subscription_activate($activate_snids, 1)	;
-		}
-	}
-}	
+function simplenews_user_list_get_subscriber() {
+	 $query = db_select('simplenews_subscriber', 'sn');
+   $query->fields('sn', array('uid','mail'))
+    ->condition('sn.activated', 1);
+  return $query->execute()->fetchAllAssoc('uid');
+}
