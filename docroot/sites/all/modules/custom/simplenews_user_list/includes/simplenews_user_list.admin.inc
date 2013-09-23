@@ -25,7 +25,7 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
  // The id's of user field is important id, This id only identifies User filter
  // We have used as key in creating user filter form widget
  $user_field_instances = field_info_instances('user')['user'];
- foreach ($user_field_instances as $key => $user_field_instance) {
+ foreach ($user_field_instances AS $key => $user_field_instance) {
   $widget_type[$key] = $user_field_instance['widget']['type'];
   $widget_label[$key] = $user_field_instance['label'];
   $widget_required[$key] = $user_field_instance['required'];
@@ -36,8 +36,8 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
  }
  
  // Set user fields allowed values to widget according to field ids
- foreach ($widget_allowed_values as $w_key => $w_value) {
-  foreach ($w_value as $key => $value) {
+ foreach ($widget_allowed_values AS $w_key => $w_value) {
+  foreach ($w_value AS $key => $value) {
    
    // If value source is taxonomy term
    if (is_array($value)) {
@@ -64,7 +64,7 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
   $user_filters_old_no = count($users_filters_old);
   if ($user_filters_old_no != 0) {
    $users_filters = unserialize($users_filters_old[0]);
-   foreach ($users_filters as $w_key => $w_value) {
+   foreach ($users_filters AS $w_key => $w_value) {
     if (is_array($w_value)) {
      $widget_default[$w_key] = $w_value;
     }
@@ -80,7 +80,7 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
   }
  }
   // Create form elemtents according to user fields
- foreach ($widget_type as $key => $value) {
+ foreach ($widget_type AS $key => $value) {
   switch($value) {
    
    // Create Drop down menu
@@ -150,7 +150,7 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
  $number_of_subscription = 0;
  // Retreive user filter from form state array
  $users_filters = array();
- foreach ($form_state['values'] as $w_key => $w_value) {
+ foreach ($form_state['values'] AS $w_key => $w_value) {
   $pos = strpos($w_key, 'kabootr_user_filter_');
   if ($pos !== FALSE) {
    if (is_array($w_value)) {
@@ -182,11 +182,11 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
   // Prepare sql query from selected users filters
   $get_users_ids_query = new EntityFieldQuery();
   $get_users_ids_query->entityCondition('entity_type', 'user');
-  foreach ($users_filters as $user_filter_name => $user_filter) {
+  foreach ($users_filters AS $user_filter_name => $user_filter) {
    $value_filter = '';
    // Prepare entity field query according to applied user filters
    if (is_array($user_filter)) {
-    foreach ($user_filter as $key => $val) {
+    foreach ($user_filter AS $key => $val) {
      if (strpos($key, 'tid_') == FALSE) {
       $value_type = 'value';
       $value_filter = $user_filter;
@@ -236,7 +236,7 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
     // If already newsletter subscription persent for given newsletter category, retrieve them
     $subscriptions_list = simplenews_get_subscriptions_by_list($newsletter_tid);
     if (! count($subscriptions_list) == 0) {
-     foreach (simplenews_get_subscriptions_by_list($newsletter_tid) as $value) {
+     foreach (simplenews_get_subscriptions_by_list($newsletter_tid) AS $value) {
       $old_uids[] = $value->uid;
       $old_mails[$value->uid] = $value->mail;
      }
@@ -248,7 +248,7 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
      // Unsubsribe the users,
      if (count($unsubscribe_uids) != 0) {
       $number_of_unsubscription = 0;
-      foreach ($unsubscribe_uids as $uid) {
+      foreach ($unsubscribe_uids AS $uid) {
        simplenews_unsubscribe_user($old_mails[$uid], $newsletter_tid, FALSE);
        $number_of_unsubscription ++;
       }
@@ -273,7 +273,7 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
   
   // If no filter is selected then subsribe the all user to that newsletter by default.
   $subscriber = simplenews_user_list_get_subscriber();
-  foreach ($subscriber as $value) {
+  foreach ($subscriber AS $value) {
    simplenews_subscribe_user($value->mail, $form_state['values']['tid'], FALSE, 'Action', '');
    $number_of_subscription ++;
   }
@@ -287,7 +287,7 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
  // If filter is selected then subsribe the filtered user to that newsletter.
  else {
   $subscriber = simplenews_user_list_get_subscriber();
-  foreach ($subcribe_uids as $uid) {
+  foreach ($subcribe_uids AS $uid) {
    simplenews_subscribe_user($subscriber[$uid]->mail, $form_state['values']['tid'], FALSE, 'Action', '');
   }
   $message = t("!number_of_subscription users have subscribed to @newsletter Category.", array(
