@@ -41,13 +41,13 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
    
    // If value source is taxonomy term
    if (is_array($value)) {
-    if (isset($value['vocabulary'])) {
+   /*  if (isset($value['vocabulary'])) {
      $vocab = taxonomy_vocabulary_machine_name_load($value['vocabulary']);
      $terms = taxonomy_get_tree($vocab->vid);
      foreach ($terms as $term) {
       $widget_values[$w_key]['tid_' . $term->tid] = $term->name;
      }
-    }
+    } */
    }
    
    // If value source is default in List type widget like Select List and Checkboxes
@@ -72,9 +72,9 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
      if (strpos($w_value, 'tid_') == FALSE) {
       $widget_default[$w_key] = $w_value;
      }
-     else {
+    /*  else {
       $widget_default[$w_key] = 'tid_' . explode('_', $w_value)[1];
-     }
+     } */
     }
    }
   }
@@ -191,10 +191,10 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
       $value_type = 'value';
       $value_filter = $user_filter;
      }
-     else {
+    /*  else {
       $value_type = 'tid';
       $value_filter[] = explode('_', $key)[1];
-     }
+     } */
     }
     $operator = "IN";
    }
@@ -204,11 +204,11 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
      $operator = "=";
      $value_filter = $user_filter;
     }
-    else {
+   /*  else {
      $value_type = 'tid';
      $value_filter = explode('_', $user_filter)[1];
      $operator = "=";
-    }
+    } */
    }
    $get_users_ids_query->fieldCondition($user_filter_name, $value_type, $value_filter, $operator);
   }
