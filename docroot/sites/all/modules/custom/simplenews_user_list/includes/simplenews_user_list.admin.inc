@@ -69,11 +69,11 @@ function simplenews_user_list_create_user_filters($newsletter_tid = NULL) {
      $widget_default[$w_key] = $w_value;
     }
     else {
-     if (strpos($w_value, 'tid_') !== FALSE) {
-      $widget_default[$w_key] = 'tid_' . explode('_', $w_value)[1];
+     if (strpos($w_value, 'tid_') == FALSE) {
+      $widget_default[$w_key] = $w_value;
      }
      else {
-      $widget_default[$w_key] = $w_value;
+      $widget_default[$w_key] = 'tid_' . explode('_', $w_value)[1];
      }
     }
    }
@@ -187,27 +187,27 @@ function simplenews_user_list_admin_category_form_submit($form, &$form_state) {
    // Prepare entity field query according to applied user filters
    if (is_array($user_filter)) {
     foreach ($user_filter as $key => $val) {
-     if (strpos($key, 'tid_') !== FALSE) {
-      $value_type = 'tid';
-      $value_filter[] = explode('_', $key)[1];
-     }
-     else {
+     if (strpos($key, 'tid_') == FALSE) {
       $value_type = 'value';
       $value_filter = $user_filter;
+     }
+     else {
+      $value_type = 'tid';
+      $value_filter[] = explode('_', $key)[1];
      }
     }
     $operator = "IN";
    }
    else {
-    if (strpos($user_filter, 'tid_') !== FALSE) {
-     $value_type = 'tid';
-     $value_filter = explode('_', $user_filter)[1];
-     $operator = "=";
-    }
-    else {
+    if (strpos($user_filter, 'tid_') == FALSE) {
      $value_type = 'value';
      $operator = "=";
      $value_filter = $user_filter;
+    }
+    else {
+     $value_type = 'tid';
+     $value_filter = explode('_', $user_filter)[1];
+     $operator = "=";
     }
    }
    $get_users_ids_query->fieldCondition($user_filter_name, $value_type, $value_filter, $operator);
