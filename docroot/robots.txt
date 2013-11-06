@@ -58,3 +58,5 @@ Disallow: /?q=user/password/
 Disallow: /?q=user/register/
 Disallow: /?q=user/login/
 Disallow: /?q=user/logout/
+#To exclude all robots from the entire server
+Disallow: /
