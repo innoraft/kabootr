@@ -239,12 +239,28 @@ function verify_email_identity_amazon($element, &$form_state) {
  * @param stirng $tid Newsletter Cateogry
  * @param string $nid Newsletter Node id
 */
-function simplenews_amazon_ses_update_feedback($feedback_type = NULL, $mail = NULL, $tid = NULL, $nid = NULL) {
+function simplenews_amazon_ses_update_feedback($feedback_type = '', $mail = '', $message_id = '') {
 	
-	if ($mail != NULL && $tid != NULL) {
-		simplenews_unsubscribe_user($mail, $tid, FALSE, 'action');
+	// Inactivate the subscriber, so in future this subscriber will never get subscritption
+	// to other newsletter category
+	if ($mail != NULL) {
+		$subscriber = simplenews_subscriber_load_by_mail($mail);
+		$status = 0;
+    $subscriber->activated = $status;
+    simplenews_subscriber_save($subscriber);
 		
 		if ($feedback_type != NULL) {
+			
+			$nid = kabootr_mail_sent_load($message_id);
+			
+			switch ($feedback_type) {
+				case 'Bounce':
+					$feedback_type = 'bounce_count';
+					break;
+				case 'Complaint':
+					$feedback_type = 'complain_count';
+					break;
+			}
 			$old_feedback = db_select('simplenews_newsletter', 'sn')
 			->fields('sn', array($feedback_type))
 			->condition('nid', $nid, '=')
@@ -259,5 +275,39 @@ function simplenews_amazon_ses_update_feedback($feedback_type = NULL, $mail = NU
 			->execute();
 		}
 	}
+}
+
+/**
+ * todo
+ */
+function simplenews_amazon_ses_receive_sns($json) {
 	
-}  
+	module_load_include('inc', 'simplenews_amazon_ses', 'includes/simplenews_amazon_ses.mail');
+	//Handle A Subscription Request Programmatically
+	if($json->Type == "SubscriptionConfirmation") {
+	$actionParameters['Token'] = $json->Token;
+	$actionParameters['TopicArn'] = $json->TopicArn;
+	$result = simplenews_amazon_ses_send_request_sns('ConfirmSubscription', $actionParameters);
+ }
+ 
+ else {
+ 	$obj = json_decode($json->Message);
+ 	$notificationType = $obj->{'notificationType'};
+ 	
+ 	if ($notificationType == 'Bounce') {
+ 		$bounceType = $obj->{'bounce'}->{'bounceType'};
+ 		$problem_email = $obj->{'bounce'}->{'bouncedRecipients'};
+ 		$problem_email = $problem_email[0]->{'emailAddress'};
+ 		$from_email = $obj->{'mail'}->{'source'};
+ 		$message_id = $obj->{'mail'}->{'messageId'};
+ 	}
+ 	elseif ($notificationType == 'Complaint') {
+ 		$problem_email = $obj->{'complaint'}->{'complainedRecipients'};
+ 	  $problem_email = $problem_email[0]->{'emailAddress'};
+ 		$from_email = $obj->{'mail'}->{'source'};
+ 		$message_id = $obj->{'mail'}->{'messageId'};
+ 	}
+ 	simplenews_amazon_ses_update_feedback($notificationType, $problem_email, $message_id);
+ }
+}
+	

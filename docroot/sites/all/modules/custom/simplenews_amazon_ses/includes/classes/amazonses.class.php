@@ -108,7 +108,6 @@ Class SimpleEmailService {
       case 'ListIdentities':
         $result = $this->listIdentities('', FALSE, $actionResponse, $responseCode);
         break;
-        
     }
     return $result;
   }
