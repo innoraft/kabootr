@@ -24,39 +24,4 @@
 function kabootr_configuration_block_info_alter(&$blocks, $theme, $code_blocks) {
   // Disable user login blocks.
   $blocks['user']['login']['status'] = 0;
-  if (!_is_user_drupal_administrator() || !_is_user_kabootr_administrator()) {
-    $blocks['panels_mini']['kabootr_left_navigation']['visibility'] = 0;
-  }
-}
-
-/**
- *
- * Returns whether the user is a Drupal administrator or not
- * @param $user
- */
-function _is_user_drupal_administrator($user = FALSE) {
-  if (!$user) {
-    // Load the currently logged in user.
-    global $user;
-  }
-  if (in_array('administrator', $user->roles)) {
-    return TRUE;
-  }
-  return FALSE;
-}
-
-/**
- *
- * Returns whether the user is a Kabootr administrator or not
- * @param $user
- */
-function _is_user_kabootr_administrator($user = FALSE) {
-  if (!$user) {
-    // Load the currently logged in user.
-    global $user;
-  }
-  if (in_array('Kabootr Administrator', $user->roles)) {
-    return TRUE;
-  }
-  return FALSE;
 }
